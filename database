@@ -100,6 +100,33 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+---------- Modulo de ubicaciones ----------
+
+-- RF-08
+CREATE TABLE prototipo.ubicaciones (
+    id_ubicacion SERIAL PRIMARY KEY,
+    nombre      VARCHAR(50) NOT NULL,
+    direccion   VARCHAR(100) NOT NULL,
+    ciudad      VARCHAR(50) NOT NULL,
+    capacidad   INT NOT NULL CHECK (capacidad > 0)
+);
+
+CREATE INDEX idx_ubicaciones_ciudad 
+ON prototipo.ubicaciones(ciudad);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 CREATE TRIGGER trg_evitar_ciclo
 BEFORE INSERT OR UPDATE ON categorias
 FOR EACH ROW EXECUTE FUNCTION evitar_ciclo_categorias();
