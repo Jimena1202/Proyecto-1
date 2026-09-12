@@ -100,6 +100,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE TRIGGER trg_evitar_ciclo
+BEFORE INSERT OR UPDATE ON categorias
+FOR EACH ROW EXECUTE FUNCTION evitar_ciclo_categorias();
+
+
+
+
 ---------- Modulo de ubicaciones ----------
 
 -- RF-08
@@ -114,6 +121,15 @@ CREATE TABLE prototipo.ubicaciones (
 CREATE INDEX idx_ubicaciones_ciudad 
 ON prototipo.ubicaciones(ciudad);
 
+--RF-09
+ALTER TABLE prototipo.eventos 
+ADD COLUMN id_ubicacion INT NULL;
+
+ALTER TABLE prototipo.eventos
+ADD CONSTRAINT fk_evento_ubicacion
+FOREIGN KEY (id_ubicacion) 
+REFERENCES prototipo.ubicaciones(id_ubicacion)
+ON DELETE SET NULL;
 
 
 
@@ -121,12 +137,3 @@ ON prototipo.ubicaciones(ciudad);
 
 
 
-
-
-
-
-
-
-CREATE TRIGGER trg_evitar_ciclo
-BEFORE INSERT OR UPDATE ON categorias
-FOR EACH ROW EXECUTE FUNCTION evitar_ciclo_categorias();
