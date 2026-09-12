@@ -145,7 +145,37 @@ GROUP BY u.id_ubicacion, u.nombre, u.ciudad, u.capacidad
 ORDER BY total_eventos DESC, u.nombre ASC;
 
 
+---------- Modulo de DISPONIBILIDAD ----------
 
+SET search_path TO prototipo;
+
+--RF-11
+
+CREATE TABLE prototipo.tipos_disponibilidad (
+    id_tipo SERIAL PRIMARY KEY,
+    nombre  VARCHAR(30) UNIQUE NOT NULL
+);
+
+INSERT INTO prototipo.tipos_disponibilidad (nombre) VALUES
+('Disponible'),
+('Ocupado'),
+('No disponible');
+
+CREATE TABLE prototipo.disponibilidades (
+    id_disponibilidad SERIAL PRIMARY KEY,
+    id_usuario        INT NOT NULL,
+    fecha             DATE NOT NULL,
+    hora_inicio       TIME NOT NULL,
+    hora_fin          TIME NOT NULL,
+    id_tipo           INT NOT NULL,
+    CONSTRAINT fk_disponibilidad_usuario
+        FOREIGN KEY (id_usuario) REFERENCES prototipo.usuarios(id_usuario)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_disponibilidad_tipo
+        FOREIGN KEY (id_tipo) REFERENCES prototipo.tipos_disponibilidad(id_tipo),
+    CONSTRAINT chk_horas_disponibilidad
+        CHECK (hora_inicio < hora_fin)
+);
 
 
 
