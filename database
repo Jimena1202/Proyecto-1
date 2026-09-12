@@ -131,6 +131,20 @@ FOREIGN KEY (id_ubicacion)
 REFERENCES prototipo.ubicaciones(id_ubicacion)
 ON DELETE SET NULL;
 
+--RF-10
+CREATE VIEW prototipo.vw_ranking_ubicaciones AS
+SELECT 
+    u.id_ubicacion,
+    u.nombre,
+    u.ciudad,
+    u.capacidad,
+    COUNT(e.id_evento) AS total_eventos
+FROM prototipo.ubicaciones u
+LEFT JOIN prototipo.eventos e ON u.id_ubicacion = e.id_ubicacion
+GROUP BY u.id_ubicacion, u.nombre, u.ciudad, u.capacidad
+ORDER BY total_eventos DESC, u.nombre ASC;
+
+
 
 
 
