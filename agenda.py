@@ -175,7 +175,7 @@ class AppAgenda(ctk.CTk):
         self.configurar_pestana_eventos()
 
         self.configurar_pestana_ubicaciones()
-        
+
         self.seleccionar_modulo("Usuarios")
 
     def al_cambiar_pestana(self):
@@ -620,6 +620,20 @@ class AppAgenda(ctk.CTk):
             self.tree_ubicaciones.column(col, width=120, anchor="center")
         self.tree_ubicaciones.pack(fill="x", padx=10, pady=5)
 
+        self.entry_ubi_nombre = ctk.CTkEntry(self.tab_ubicaciones, placeholder_text="Nombre")
+        self.entry_ubi_nombre.pack(padx=10, pady=2, fill="x")
+        
+        self.entry_ubi_direccion = ctk.CTkEntry(self.tab_ubicaciones, placeholder_text="Dirección")
+        self.entry_ubi_direccion.pack(padx=10, pady=2, fill="x")
+        
+        self.entry_ubi_ciudad = ctk.CTkEntry(self.tab_ubicaciones, placeholder_text="Ciudad")
+        self.entry_ubi_ciudad.pack(padx=10, pady=2, fill="x")
+        
+        self.entry_ubi_capacidad = ctk.CTkEntry(self.tab_ubicaciones, placeholder_text="Capacidad")
+        self.entry_ubi_capacidad.pack(padx=10, pady=2, fill="x")
+        
+        ctk.CTkButton(self.tab_ubicaciones, text="Crear", command=self.agregar_ubicacion).pack(pady=5)
+
     def cargar_datos_ubicaciones(self):
         try:
             rows = self.ejecutar_consulta(
@@ -633,6 +647,32 @@ class AppAgenda(ctk.CTk):
                 self.tree_ubicaciones.insert("", "end", values=row)
         except Exception as e:
             print("Error cargando ubicaciones:", e)
+
+
+    def limpiar_form_ubicacion(self):                   
+        self.tree_ubicaciones.selection_remove(self.tree_ubicaciones.selection())
+        self.entry_ubi_nombre.delete(0, tk.END)
+        self.entry_ubi_direccion.delete(0, tk.END)
+        self.entry_ubi_ciudad.delete(0, tk.END)
+        self.entry_ubi_capacidad.delete(0, tk.END)
+
+    def agregar_ubicacion(self):
+        nombre = self.entry_ubi_nombre.get().strip()
+        direccion = self.entry_ubi_direccion.get().strip()
+        ciudad = self.entry_ubi_ciudad.get().strip()
+        capacidad = self.entry_ubi_capacidad.get().strip()
+        if not nombre or not direccion or not ciudad or not capacidad:
+            return messagebox.showwarning("Campos incompletos", "Completa todos los campos.")
+        try:
+            self.ejecutar_consulta(
+                "INSERT INTO prototipo.ubicaciones (nombre, direccion, ciudad, capacidad) VALUES (%s, %s, %s, %s)",
+                (nombre, direccion, ciudad, capacidad)
+            )
+            self.limpiar_form_ubicacion()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Ubicación registrada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
 
     # -------------------- REFRESCO GENERAL --------------------
 
