@@ -209,4 +209,28 @@ JOIN prototipo.tipos_disponibilidad td ON d.id_tipo = td.id_tipo
 WHERE td.nombre IN ('Ocupado', 'No disponible');
 
 
+---------- Modulo de TAREAS ----------
 
+--RF-15
+
+CREATE TABLE prototipo.tareas (
+    id_tarea                SERIAL PRIMARY KEY,
+    id_evento               INT NOT NULL,
+    id_usuario_responsable  INT NOT NULL,
+    titulo                  VARCHAR(100) NOT NULL,
+    descripcion             TEXT,
+    prioridad               VARCHAR(20) NOT NULL,
+    fecha_limite            DATE NOT NULL,
+    estado                  VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+    fecha_creacion          DATE DEFAULT CURRENT_DATE,
+    CONSTRAINT fk_tarea_evento
+        FOREIGN KEY (id_evento) REFERENCES prototipo.eventos(id_evento)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_tarea_responsable
+        FOREIGN KEY (id_usuario_responsable) REFERENCES prototipo.usuarios(id_usuario)
+        ON DELETE CASCADE,
+    CONSTRAINT chk_prioridad
+        CHECK (prioridad IN ('Baja', 'Media', 'Alta')),
+    CONSTRAINT chk_estado
+        CHECK (estado IN ('Pendiente', 'En progreso', 'Completada', 'Cancelada'))
+);
