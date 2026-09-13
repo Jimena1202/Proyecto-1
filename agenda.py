@@ -168,10 +168,14 @@ class AppAgenda(ctk.CTk):
         self.tab_usuarios = self.tabview.add("Usuarios")
         self.tab_categorias = self.tabview.add("Categorías")
         self.tab_eventos = self.tabview.add("Eventos")
+        self.tab_ubicaciones = self.tabview.add("Ubicaciones")
 
         self.configurar_pestana_usuarios()
         self.configurar_pestana_categorias()
         self.configurar_pestana_eventos()
+
+        self.configurar_pestana_ubicaciones()
+        
         self.seleccionar_modulo("Usuarios")
 
     def al_cambiar_pestana(self):
@@ -599,6 +603,37 @@ class AppAgenda(ctk.CTk):
         except Exception as e:
             print(f"Error cargando eventos: {e}")
 
+
+# -------------------- UBICACIONES --------------------
+
+    def configurar_pestana_ubicaciones(self):
+        ctk.CTkLabel(self.tab_ubicaciones, text="Ubicaciones").pack(pady=5)
+        
+        self.tree_ubicaciones = ttk.Treeview(
+            self.tab_ubicaciones,
+            columns=("ID", "Nombre", "Direccion", "Ciudad", "Capacidad"),
+            show="headings",
+            height=8
+        )
+        for col in ("ID", "Nombre", "Direccion", "Ciudad", "Capacidad"):
+            self.tree_ubicaciones.heading(col, text=col)
+            self.tree_ubicaciones.column(col, width=120, anchor="center")
+        self.tree_ubicaciones.pack(fill="x", padx=10, pady=5)
+
+    def cargar_datos_ubicaciones(self):
+        try:
+            rows = self.ejecutar_consulta(
+                "SELECT id_ubicacion, nombre, direccion, ciudad, capacidad "
+                "FROM prototipo.ubicaciones ORDER BY nombre",
+                fetch=True
+            )
+            for item in self.tree_ubicaciones.get_children():
+                self.tree_ubicaciones.delete(item)
+            for row in rows:
+                self.tree_ubicaciones.insert("", "end", values=row)
+        except Exception as e:
+            print("Error cargando ubicaciones:", e)
+
     # -------------------- REFRESCO GENERAL --------------------
 
     def actualizar_todas_las_tablas(self):
@@ -606,6 +641,7 @@ class AppAgenda(ctk.CTk):
         self.cargar_datos_categorias()
         self.cargar_datos_eventos()
 
+        self.cargar_datos_ubicaciones()
 
 if __name__ == "__main__":
     app = AppAgenda()
