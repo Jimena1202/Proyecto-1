@@ -234,3 +234,37 @@ CREATE TABLE prototipo.tareas (
     CONSTRAINT chk_estado
         CHECK (estado IN ('Pendiente', 'En progreso', 'Completada', 'Cancelada'))
 );
+
+--RF-16
+
+CREATE VIEW prototipo.vw_tareas_vencidas AS
+SELECT 
+    t.id_tarea,
+    t.titulo AS tarea,
+    e.titulo AS evento,
+    u.nombre || ' ' || u.apellido AS responsable,
+    t.fecha_limite,
+    t.prioridad,
+    t.estado,
+    (CURRENT_DATE - t.fecha_limite) AS dias_vencida
+FROM prototipo.tareas t
+JOIN prototipo.eventos e ON t.id_evento = e.id_evento
+JOIN prototipo.usuarios u ON t.id_usuario_responsable = u.id_usuario
+WHERE t.fecha_limite < CURRENT_DATE
+  AND t.estado NOT IN ('Completada', 'Cancelada')
+ORDER BY t.fecha_limite ASC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
