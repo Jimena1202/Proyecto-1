@@ -178,6 +178,35 @@ CREATE TABLE prototipo.disponibilidades (
 );
 
 
+--RF-12 
+
+CREATE VIEW prototipo.vw_ocupaciones_usuarios AS
+
+SELECT 
+    u.id_usuario,
+    u.nombre,
+    u.apellido,
+    e.fecha_inicio::DATE AS fecha,
+    e.fecha_inicio::TIME AS hora_inicio,
+    e.fecha_fin::TIME    AS hora_fin,
+    'Evento' AS motivo
+FROM prototipo.usuarios u
+JOIN prototipo.eventos e ON e.id_usuario_propietario = u.id_usuario
+
+UNION ALL
+
+SELECT
+    u.id_usuario,
+    u.nombre,
+    u.apellido,
+    d.fecha,
+    d.hora_inicio,
+    d.hora_fin,
+    td.nombre AS motivo
+FROM prototipo.usuarios u
+JOIN prototipo.disponibilidades d ON d.id_usuario = u.id_usuario
+JOIN prototipo.tipos_disponibilidad td ON d.id_tipo = td.id_tipo
+WHERE td.nombre IN ('Ocupado', 'No disponible');
 
 
 
