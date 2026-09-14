@@ -619,6 +619,7 @@ class AppAgenda(ctk.CTk):
             self.tree_ubicaciones.heading(col, text=col)
             self.tree_ubicaciones.column(col, width=120, anchor="center")
         self.tree_ubicaciones.pack(fill="x", padx=10, pady=5)
+        self.tree_ubicaciones.bind("<<TreeviewSelect>>", self.cargar_ubicacion_seleccionada)
 
         self.entry_ubi_nombre = ctk.CTkEntry(self.tab_ubicaciones, placeholder_text="Nombre")
         self.entry_ubi_nombre.pack(padx=10, pady=2, fill="x")
@@ -633,6 +634,9 @@ class AppAgenda(ctk.CTk):
         self.entry_ubi_capacidad.pack(padx=10, pady=2, fill="x")
         
         ctk.CTkButton(self.tab_ubicaciones, text="Crear", command=self.agregar_ubicacion).pack(pady=5)
+        ctk.CTkButton(self.tab_ubicaciones, text="Actualizar", command=self.actualizar_ubicacion).pack(pady=5)
+        ctk.CTkButton(self.tab_ubicaciones, text="Eliminar", command=self.eliminar_ubicacion).pack(pady=5)
+        ctk.CTkButton(self.tab_ubicaciones, text="Ver ranking", command=self.ver_ranking_ubicaciones).pack(pady=5)
 
     def cargar_datos_ubicaciones(self):
         try:
@@ -656,6 +660,20 @@ class AppAgenda(ctk.CTk):
         self.entry_ubi_ciudad.delete(0, tk.END)
         self.entry_ubi_capacidad.delete(0, tk.END)
 
+    def cargar_ubicacion_seleccionada(self, _=None):
+        sel = self.tree_ubicaciones.selection()
+        if not sel:
+            return
+        vals = self.tree_ubicaciones.item(sel[0])["values"]
+        self.entry_ubi_nombre.delete(0, tk.END)
+        self.entry_ubi_nombre.insert(0, vals[1])
+        self.entry_ubi_direccion.delete(0, tk.END)
+        self.entry_ubi_direccion.insert(0, vals[2])
+        self.entry_ubi_ciudad.delete(0, tk.END)
+        self.entry_ubi_ciudad.insert(0, vals[3])
+        self.entry_ubi_capacidad.delete(0, tk.END)
+        self.entry_ubi_capacidad.insert(0, vals[4])
+
     def agregar_ubicacion(self):
         nombre = self.entry_ubi_nombre.get().strip()
         direccion = self.entry_ubi_direccion.get().strip()
@@ -673,6 +691,64 @@ class AppAgenda(ctk.CTk):
             messagebox.showinfo("Éxito", "Ubicación registrada correctamente.")
         except Exception as e:
             messagebox.showerror("Error de base de datos", str(e))
+
+
+    def actualizar_ubicacion(self):
+        sel = self.tree_ubicaciones.selection()
+        if not sel:
+            return messagebox.showwarning("Sin selección", "Selecciona una ubicación.")
+        uid = self.tree_ubicaciones.item(sel[0])["values"][0]
+        nombre = self.entry_ubi_nombre.get().strip()
+        direccion = self.entry_ubi_direccion.get().strip()
+        ciudad = self.entry_ubi_ciudad.get().strip()
+        capacidad = self.entry_ubi_capacidad.get().strip()
+        if not nombre or not direccion or not ciudad or not capacidad:
+            return messagebox.showwarning("Campos incompletos", "Completa todos los campos.")
+        try:
+            self.ejecutar_consulta(
+                "UPDATE prototipo.ubicaciones SET nombre=%s, direccion=%s, ciudad=%s, capacidad=%s WHERE id_ubicacion=%s",
+                (nombre, direccion, ciudad, capacidad, uid)
+            )
+            self.limpiar_form_ubicacion()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Ubicación actualizada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
+
+
+    def eliminar_ubicacion(self):
+        sel = self.tree_ubicaciones.selection()
+        if not sel:
+            return messagebox.showwarning("Sin selección", "Selecciona una ubicación.")
+        uid = self.tree_ubicaciones.item(sel[0])["values"][0]
+        if not messagebox.askyesno("Confirmar", "¿Eliminar la ubicación seleccionada?"):
+            return
+        try:
+            self.ejecutar_consulta(
+                "DELETE FROM prototipo.ubicaciones WHERE id_ubicacion=%s",
+                (uid,)
+            )
+            self.limpiar_form_ubicacion()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Ubicación eliminada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
+
+
+    def ver_ranking_ubicaciones(self):
+        try:
+            rows = self.ejecutar_consulta(
+                "SELECT nombre, ciudad, total_eventos FROM prototipo.vw_ranking_ubicaciones",
+                fetch=True
+            )
+        except Exception as e:
+            return messagebox.showerror("Error de base de datos", str(e))
+        texto = "Ranking de ubicaciones:\n\n"
+        for r in rows:
+            texto += f"{r[0]} ({r[1]}) - {r[2]} eventos\n"
+        if not rows:
+            texto = "No hay ubicaciones registradas."
+        messagebox.showinfo("Ranking", texto)
 
     # -------------------- REFRESCO GENERAL --------------------
 
