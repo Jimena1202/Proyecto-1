@@ -178,6 +178,7 @@ class AppAgenda(ctk.CTk):
         self.configurar_pestana_eventos()
 
         self.configurar_pestana_ubicaciones()
+        self.configurar_pestana_disponibilidad()
 
         self.seleccionar_modulo("Usuarios")
 
@@ -786,6 +787,7 @@ class AppAgenda(ctk.CTk):
             tabla, ("ID", "Usuario", "Fecha", "Inicio", "Fin", "Tipo"), 
             (60, 160, 100, 90, 90, 110)
         )
+        self.tree_disponibilidad.bind("<<TreeviewSelect>>", self.cargar_disponibilidad_seleccionada)
           
         ctk.CTkLabel(form, text="Formulario de disponibilidad", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 12))
         
@@ -813,6 +815,8 @@ class AppAgenda(ctk.CTk):
 
         ctk.CTkButton(form, text="+ Crear disponibilidad", command=self.agregar_disponibilidad).pack(fill="x", padx=10, pady=(16, 5))
         ctk.CTkButton(form, text="Nuevo / Limpiar", command=self.limpiar_form_disponibilidad, fg_color="gray").pack(fill="x", padx=10, pady=5)
+        ctk.CTkButton(form, text="+ Actualizar seleccionada", command=self.actualizar_disponibilidad).pack(fill="x", padx=10, pady=5)
+        ctk.CTkButton(form, text="Eliminar seleccionada", command=self.eliminar_disponibilidad, fg_color="#b33939", hover_color="#8f2d2d").pack(fill="x", padx=10, pady=5)
 
 
     def cargar_datos_disponibilidad(self):
@@ -863,6 +867,66 @@ class AppAgenda(ctk.CTk):
         self.entry_disp_inicio.delete(0, tk.END)
         self.entry_disp_fin.delete(0, tk.END)
         self.combo_disp_tipo.set("Disponible")
+
+    def cargar_disponibilidad_seleccionada(self, _=None):
+        sel = self.tree_disponibilidad.selection()
+        if not sel:
+            return
+        vals = self.tree_disponibilidad.item(sel[0])["values"]
+        usuario_texto = vals[1]
+        for etiqueta, uid in self.usuarios_combo.items():
+            if etiqueta.startswith(usuario_texto):
+                self.combo_disp_usuario.set(etiqueta)
+                break
+        self.entry_disp_fecha.delete(0, tk.END)
+        self.entry_disp_fecha.insert(0, str(vals[2]))
+        self.entry_disp_inicio.delete(0, tk.END)
+        self.entry_disp_inicio.insert(0, str(vals[3]))
+        self.entry_disp_fin.delete(0, tk.END)
+        self.entry_disp_fin.insert(0, str(vals[4]))
+        self.combo_disp_tipo.set(vals[5])
+
+    def actualizar_disponibilidad(self):
+        sel = self.tree_disponibilidad.selection()
+        if not sel:
+            return messagebox.showwarning("Sin selección", "Selecciona una disponibilidad.")
+        did = self.tree_disponibilidad.item(sel[0])["values"][0]
+        usuario = self.usuarios_combo.get(self.combo_disp_usuario.get())
+        fecha = self.entry_disp_fecha.get().strip()
+        inicio = self.entry_disp_inicio.get().strip()
+        fin = self.entry_disp_fin.get().strip()
+        tipos = {"Disponible": 1, "Ocupado": 2, "No disponible": 3}
+        tipo = tipos[self.combo_disp_tipo.get()]
+        if usuario is None or not fecha or not inicio or not fin:
+            return messagebox.showwarning("Campos incompletos", "Completa todos los campos.")
+        try:
+            self.ejecutar_consulta(
+                "UPDATE prototipo.disponibilidades SET id_usuario=%s, fecha=%s, hora_inicio=%s, hora_fin=%s, id_tipo=%s WHERE id_disponibilidad=%s",
+                (usuario, fecha, inicio, fin, tipo, did)
+            )
+            self.limpiar_form_disponibilidad()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Disponibilidad actualizada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
+
+    def eliminar_disponibilidad(self):
+        sel = self.tree_disponibilidad.selection()
+        if not sel:
+            return messagebox.showwarning("Sin selección", "Selecciona una disponibilidad.")
+        did = self.tree_disponibilidad.item(sel[0])["values"][0]
+        if not messagebox.askyesno("Confirmar", "¿Eliminar la disponibilidad seleccionada?"):
+            return
+        try:
+            self.ejecutar_consulta(
+                "DELETE FROM prototipo.disponibilidades WHERE id_disponibilidad=%s",
+                (did,)
+            )
+            self.limpiar_form_disponibilidad()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Disponibilidad eliminada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
   
 
     # -------------------- REFRESCO GENERAL --------------------
@@ -873,7 +937,7 @@ class AppAgenda(ctk.CTk):
         self.cargar_datos_eventos()
 
         self.cargar_datos_ubicaciones()
-        self.configurar_pestana_disponibilidad()
+        self.cargar_datos_disponibilidad()
 
 if __name__ == "__main__":
     app = AppAgenda()
