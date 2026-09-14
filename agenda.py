@@ -34,6 +34,8 @@ class AppAgenda(ctk.CTk):
         self.categorias_combo = {}
         self.categorias_padre_combo = {}
 
+        self.ubicaciones_combo = {}
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
@@ -457,6 +459,11 @@ class AppAgenda(ctk.CTk):
         self.combo_ev_categoria.set("Seleccione una categoría")
         self.combo_ev_categoria.pack(fill="x", padx=10, pady=4)
 
+        ctk.CTkLabel(form, text="Ubicación").pack(anchor="w", padx=10, pady=(8, 2))
+        self.combo_ev_ubicacion = ctk.CTkComboBox(form, values=["Sin ubicación"], state="readonly")
+        self.combo_ev_ubicacion.set("Sin ubicación")
+        self.combo_ev_ubicacion.pack(fill="x", padx=10, pady=4)
+
         ctk.CTkLabel(form, text="Inicio").pack(anchor="w", padx=10, pady=(10, 2))
         fila_inicio = ctk.CTkFrame(form, fg_color="transparent"); fila_inicio.pack(fill="x", padx=10)
         self.fecha_inicio = self.crear_selector_fecha(fila_inicio)
@@ -600,6 +607,15 @@ class AppAgenda(ctk.CTk):
             valores_c = ["Seleccione una categoría"] + list(self.categorias_combo.keys())
             self.combo_ev_usuario.configure(values=valores_u)
             self.combo_ev_categoria.configure(values=valores_c)
+
+            self.ubicaciones_combo = {}
+            ubi_rows = self.ejecutar_consulta("SELECT id_ubicacion, nombre FROM prototipo.ubicaciones ORDER BY nombre", fetch=True)
+            for row in ubi_rows:
+                etiqueta = f"{row[1]} - #{row[0]}"
+                self.ubicaciones_combo[etiqueta] = row[0]
+            valores_ubi = ["Sin ubicación"] + list(self.ubicaciones_combo.keys())
+            self.combo_ev_ubicacion.configure(values=valores_ubi)
+
         except Exception as e:
             print(f"Error cargando eventos: {e}")
 
@@ -749,6 +765,101 @@ class AppAgenda(ctk.CTk):
         if not rows:
             texto = "No hay ubicaciones registradas."
         messagebox.showinfo("Ranking", texto)
+
+
+# -------------------- DISPONIBILIDAD --------------------
+
+
+    def configurar_pestana_disponibilidad(self):
+        self.crear_encabezado(self.tab_disponibilidad, "Disponibilidad", "Administra las franjas de disponibilidad de los usuarios.")
+        
+        cuerpo = ctk.CTkFrame(self.tab_disponibilidad, fg_color="transparent")
+        cuerpo.pack(fill="both", expand=True, padx=10, pady=5)
+        cuerpo.grid_columnconfigure(0, weight=3); cuerpo.grid_columnconfigure(1, weight=1)
+        cuerpo.grid_rowconfigure(0, weight=1)
+        
+        tabla = ctk.CTkFrame(cuerpo); tabla.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        form = ctk.CTkScrollableFrame(cuerpo, width=350); form.grid(row=0, column=1, sticky="nsew")
+        
+        self.tree_disponibilidad = self.crear_treeview(
+            tabla, ("ID", "Usuario", "Fecha", "Inicio", "Fin", "Tipo"), 
+            (60, 160, 100, 90, 90, 110)
+        )
+          
+        ctk.CTkLabel(form, text="Formulario de disponibilidad", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 12))
+        
+        ctk.CTkLabel(form, text="Usuario").pack(anchor="w", padx=10, pady=(8, 2))
+        self.combo_disp_usuario = ctk.CTkComboBox(form, values=["Seleccione un usuario"], state="readonly")
+        self.combo_disp_usuario.set("Seleccione un usuario")
+        self.combo_disp_usuario.pack(fill="x", padx=10, pady=4)
+        
+        ctk.CTkLabel(form, text="Fecha").pack(anchor="w", padx=10, pady=(8, 2))
+        self.entry_disp_fecha = ctk.CTkEntry(form, placeholder_text="YYYY-MM-DD")
+        self.entry_disp_fecha.pack(fill="x", padx=10, pady=4)
+        
+        ctk.CTkLabel(form, text="Hora inicio").pack(anchor="w", padx=10, pady=(8, 2))
+        self.entry_disp_inicio = ctk.CTkEntry(form, placeholder_text="HH:MM")
+        self.entry_disp_inicio.pack(fill="x", padx=10, pady=4)
+        
+        ctk.CTkLabel(form, text="Hora fin").pack(anchor="w", padx=10, pady=(8, 2))
+        self.entry_disp_fin = ctk.CTkEntry(form, placeholder_text="HH:MM")
+        self.entry_disp_fin.pack(fill="x", padx=10, pady=4)
+        
+        ctk.CTkLabel(form, text="Tipo").pack(anchor="w", padx=10, pady=(8, 2))
+        self.combo_disp_tipo = ctk.CTkComboBox(form, values=["Disponible", "Ocupado", "No disponible"], state="readonly")
+        self.combo_disp_tipo.set("Disponible")
+        self.combo_disp_tipo.pack(fill="x", padx=10, pady=4)
+
+
+    def cargar_datos_disponibilidad(self):
+        try:
+            rows = self.ejecutar_consulta("""
+                SELECT d.id_disponibilidad, u.nombre || ' ' || u.apellido, 
+                    d.fecha, d.hora_inicio, d.hora_fin, td.nombre
+                FROM disponibilidades d
+                JOIN usuarios u ON u.id_usuario = d.id_usuario
+                JOIN tipos_disponibilidad td ON td.id_tipo = d.id_tipo
+                ORDER BY d.fecha DESC
+            """, fetch=True)
+            for item in self.tree_disponibilidad.get_children():
+                self.tree_disponibilidad.delete(item)
+            for row in rows:
+                self.tree_disponibilidad.insert("", "end", values=row)
+            
+            valores_u = ["Seleccione un usuario"] + list(self.usuarios_combo.keys())
+            self.combo_disp_usuario.configure(values=valores_u)
+        except Exception as e:
+            print("Error cargando disponibilidad:", e)
+
+
+    def agregar_disponibilidad(self):
+        usuario = self.usuarios_combo.get(self.combo_disp_usuario.get())
+        fecha = self.entry_disp_fecha.get().strip()
+        inicio = self.entry_disp_inicio.get().strip()
+        fin = self.entry_disp_fin.get().strip()
+        tipos = {"Disponible": 1, "Ocupado": 2, "No disponible": 3}
+        tipo = tipos[self.combo_disp_tipo.get()]
+        if usuario is None or not fecha or not inicio or not fin:
+            return messagebox.showwarning("Campos incompletos", "Completa todos los campos.")
+        try:
+            self.ejecutar_consulta(
+                "INSERT INTO prototipo.disponibilidades (id_usuario, fecha, hora_inicio, hora_fin, id_tipo) VALUES (%s, %s, %s, %s, %s)",
+                (usuario, fecha, inicio, fin, tipo)
+            )
+            self.limpiar_form_disponibilidad()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Disponibilidad registrada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
+
+    def limpiar_form_disponibilidad(self):
+        self.tree_disponibilidad.selection_remove(self.tree_disponibilidad.selection())
+        self.combo_disp_usuario.set("Seleccione un usuario")
+        self.entry_disp_fecha.delete(0, tk.END)
+        self.entry_disp_inicio.delete(0, tk.END)
+        self.entry_disp_fin.delete(0, tk.END)
+        self.combo_disp_tipo.set("Disponible")
+  
 
     # -------------------- REFRESCO GENERAL --------------------
 
