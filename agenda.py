@@ -171,6 +171,7 @@ class AppAgenda(ctk.CTk):
         self.tab_categorias = self.tabview.add("Categorías")
         self.tab_eventos = self.tabview.add("Eventos")
         self.tab_ubicaciones = self.tabview.add("Ubicaciones")
+        self.tab_disponibilidad = self.tabview.add("Disponibilidad")
 
         self.configurar_pestana_usuarios()
         self.configurar_pestana_categorias()
@@ -810,6 +811,9 @@ class AppAgenda(ctk.CTk):
         self.combo_disp_tipo.set("Disponible")
         self.combo_disp_tipo.pack(fill="x", padx=10, pady=4)
 
+        ctk.CTkButton(form, text="+ Crear disponibilidad", command=self.agregar_disponibilidad).pack(fill="x", padx=10, pady=(16, 5))
+        ctk.CTkButton(form, text="Nuevo / Limpiar", command=self.limpiar_form_disponibilidad, fg_color="gray").pack(fill="x", padx=10, pady=5)
+
 
     def cargar_datos_disponibilidad(self):
         try:
@@ -869,6 +873,7 @@ class AppAgenda(ctk.CTk):
         self.cargar_datos_eventos()
 
         self.cargar_datos_ubicaciones()
+        self.configurar_pestana_disponibilidad()
 
 if __name__ == "__main__":
     app = AppAgenda()
