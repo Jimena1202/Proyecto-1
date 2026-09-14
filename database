@@ -254,6 +254,20 @@ WHERE t.fecha_limite < CURRENT_DATE
   AND t.estado NOT IN ('Completada', 'Cancelada')
 ORDER BY t.fecha_limite ASC;
 
+--RF-17
+
+CREATE VIEW prototipo.vw_carga_trabajo AS
+SELECT 
+    u.id_usuario,
+    u.nombre || ' ' || u.apellido AS usuario,
+    COUNT(t.id_tarea) AS total_pendientes,
+    COUNT(CASE WHEN t.fecha_limite < CURRENT_DATE THEN 1 END) AS vencidas
+FROM prototipo.usuarios u
+LEFT JOIN prototipo.tareas t 
+    ON u.id_usuario = t.id_usuario_responsable 
+    AND t.estado IN ('Pendiente', 'En progreso')
+GROUP BY u.id_usuario, u.nombre, u.apellido
+ORDER BY vencidas DESC, total_pendientes DESC;
 
 
 
