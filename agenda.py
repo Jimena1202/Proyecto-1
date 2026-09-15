@@ -967,6 +967,7 @@ class AppAgenda(ctk.CTk):
         self.entry_tar_fecha.pack(padx=10, pady=4, fill="x")
         
         ctk.CTkButton(self.tab_tareas, text="Crear", command=self.agregar_tarea).pack(pady=5)
+        ctk.CTkButton(self.tab_tareas, text="Limpiar", command=self.limpiar_form_tarea, fg_color="gray").pack(pady=5)
 
     def agregar_tarea(self):
         titulo = self.entry_tar_titulo.get().strip()
@@ -992,18 +993,15 @@ class AppAgenda(ctk.CTk):
         if not sel:
             return
         vals = self.tree_tareas.item(sel[0])["values"]
-        # vals = (ID, titulo_evento, titulo_tarea, prioridad, "Nombre Apellido", estado, fecha)
         self.entry_tar_titulo.delete(0, tk.END)
         self.entry_tar_titulo.insert(0, vals[2])
         self.entry_tar_fecha.delete(0, tk.END)
         self.entry_tar_fecha.insert(0, str(vals[6]))
         self.combo_tar_prioridad.set(vals[3])
-        # Buscar etiqueta del evento
         for etiqueta in self.eventos_combo:
             if etiqueta.startswith(str(vals[1])):
                 self.combo_tar_evento.set(etiqueta)
                 break
-        # Buscar etiqueta del responsable
         for etiqueta in self.usuarios_combo:
             if etiqueta.startswith(str(vals[4])):
                 self.combo_tar_responsable.set(etiqueta)
@@ -1011,7 +1009,6 @@ class AppAgenda(ctk.CTk):
 
     def cargar_datos_tareas(self):
         try:
-            # Cargar tareas en la tabla
             rows = self.ejecutar_consulta("""
                 SELECT t.id_tarea, e.titulo, t.titulo, t.prioridad,
                        u.nombre || ' ' || u.apellido, t.estado, t.fecha_limite
@@ -1025,7 +1022,6 @@ class AppAgenda(ctk.CTk):
             for row in rows:
                 self.tree_tareas.insert("", "end", values=row)
             
-            # Cargar combos
             valores_u = ["Seleccione un usuario"] + list(self.usuarios_combo.keys())
             self.combo_tar_responsable.configure(values=valores_u)
             
@@ -1038,6 +1034,40 @@ class AppAgenda(ctk.CTk):
             self.combo_tar_evento.configure(values=valores_e)
         except Exception as e:
             print("Error cargando tareas:", e)
+
+    def limpiar_form_tarea(self):
+        self.tree_tareas.selection_remove(self.tree_tareas.selection())
+        self.entry_tar_titulo.delete(0, tk.END)
+        self.entry_tar_fecha.delete(0, tk.END)
+        self.combo_tar_evento.set("Seleccione un evento")
+        self.combo_tar_responsable.set("Seleccione un usuario")
+        self.combo_tar_prioridad.set("Media")
+        self.combo_tar_estado.set("Pendiente")
+
+    def actualizar_tarea(self):
+        sel = self.tree_tareas.selection()
+        if not sel:
+            return messagebox.showwarning("Sin selección", "Selecciona una tarea.")
+        tid = self.tree_tareas.item(sel[0])["values"][0]
+        titulo = self.entry_tar_titulo.get().strip()
+        evento = self.eventos_combo.get(self.combo_tar_evento.get())
+        responsable = self.usuarios_combo.get(self.combo_tar_responsable.get())
+        prioridad = self.combo_tar_prioridad.get()
+        fecha = self.entry_tar_fecha.get().strip()
+        estado = self.combo_tar_estado.get()
+        if not titulo or evento is None or responsable is None or not fecha:
+            return messagebox.showwarning("Campos incompletos", "Completa todos los campos.")
+        try:
+            self.ejecutar_consulta(
+                "UPDATE prototipo.tareas SET id_evento=%s, id_usuario_responsable=%s, titulo=%s, prioridad=%s, fecha_limite=%s, estado=%s WHERE id_tarea=%s",
+                (evento, responsable, titulo, prioridad, fecha, estado, tid)
+            )
+            self.limpiar_form_tarea()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Tarea actualizada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
+    
 
     # -------------------- REFRESCO GENERAL --------------------
 
