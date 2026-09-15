@@ -181,6 +181,7 @@ class AppAgenda(ctk.CTk):
 
         self.configurar_pestana_ubicaciones()
         self.configurar_pestana_disponibilidad()
+        self.configurar_pestana_tareas()
 
         self.seleccionar_modulo("Usuarios")
 
@@ -940,6 +941,8 @@ class AppAgenda(ctk.CTk):
             ("ID", "Evento", "Título", "Prioridad", "Responsable", "Estado", "Fecha límite"),
             (50, 160, 180, 90, 150, 100, 110)
         )
+
+        self.tree_tareas.bind("<<TreeviewSelect>>", self.cargar_tarea_seleccionada)
         
         self.entry_tar_titulo = ctk.CTkEntry(self.tab_tareas, placeholder_text="Título de la tarea")
         self.entry_tar_titulo.pack(padx=10, pady=4, fill="x")
@@ -967,10 +970,74 @@ class AppAgenda(ctk.CTk):
 
     def agregar_tarea(self):
         titulo = self.entry_tar_titulo.get().strip()
-        if not titulo:
-            return messagebox.showwarning("Faltan datos", "Escribe un título.")
-        messagebox.showinfo("Prueba", f"Título recibido: {titulo}")
+        evento = self.eventos_combo.get(self.combo_tar_evento.get())
+        responsable = self.usuarios_combo.get(self.combo_tar_responsable.get())
+        prioridad = self.combo_tar_prioridad.get()
+        fecha = self.entry_tar_fecha.get().strip()
+        if not titulo or evento is None or responsable is None or not fecha:
+            return messagebox.showwarning("Campos incompletos", "Completa todos los campos.")
+        try:
+            self.ejecutar_consulta(
+                "INSERT INTO prototipo.tareas (id_evento, id_usuario_responsable, titulo, prioridad, fecha_limite) VALUES (%s, %s, %s, %s, %s)",
+                (evento, responsable, titulo, prioridad, fecha)
+            )
+            self.entry_tar_titulo.delete(0, tk.END)
+            self.entry_tar_fecha.delete(0, tk.END)
+            messagebox.showinfo("Éxito", "Tarea creada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
 
+    def cargar_tarea_seleccionada(self, _=None):
+        sel = self.tree_tareas.selection()
+        if not sel:
+            return
+        vals = self.tree_tareas.item(sel[0])["values"]
+        # vals = (ID, titulo_evento, titulo_tarea, prioridad, "Nombre Apellido", estado, fecha)
+        self.entry_tar_titulo.delete(0, tk.END)
+        self.entry_tar_titulo.insert(0, vals[2])
+        self.entry_tar_fecha.delete(0, tk.END)
+        self.entry_tar_fecha.insert(0, str(vals[6]))
+        self.combo_tar_prioridad.set(vals[3])
+        # Buscar etiqueta del evento
+        for etiqueta in self.eventos_combo:
+            if etiqueta.startswith(str(vals[1])):
+                self.combo_tar_evento.set(etiqueta)
+                break
+        # Buscar etiqueta del responsable
+        for etiqueta in self.usuarios_combo:
+            if etiqueta.startswith(str(vals[4])):
+                self.combo_tar_responsable.set(etiqueta)
+                break
+
+    def cargar_datos_tareas(self):
+        try:
+            # Cargar tareas en la tabla
+            rows = self.ejecutar_consulta("""
+                SELECT t.id_tarea, e.titulo, t.titulo, t.prioridad,
+                       u.nombre || ' ' || u.apellido, t.estado, t.fecha_limite
+                FROM tareas t
+                JOIN eventos e ON e.id_evento = t.id_evento
+                JOIN usuarios u ON u.id_usuario = t.id_usuario_responsable
+                ORDER BY t.fecha_limite ASC
+            """, fetch=True)
+            for item in self.tree_tareas.get_children():
+                self.tree_tareas.delete(item)
+            for row in rows:
+                self.tree_tareas.insert("", "end", values=row)
+            
+            # Cargar combos
+            valores_u = ["Seleccione un usuario"] + list(self.usuarios_combo.keys())
+            self.combo_tar_responsable.configure(values=valores_u)
+            
+            self.eventos_combo = {}
+            ev_rows = self.ejecutar_consulta("SELECT id_evento, titulo FROM eventos ORDER BY titulo", fetch=True)
+            for row in ev_rows:
+                etiqueta = f"{row[1]} - #{row[0]}"
+                self.eventos_combo[etiqueta] = row[0]
+            valores_e = ["Seleccione un evento"] + list(self.eventos_combo.keys())
+            self.combo_tar_evento.configure(values=valores_e)
+        except Exception as e:
+            print("Error cargando tareas:", e)
 
     # -------------------- REFRESCO GENERAL --------------------
 
@@ -981,8 +1048,8 @@ class AppAgenda(ctk.CTk):
 
         self.cargar_datos_ubicaciones()
         self.cargar_datos_disponibilidad()
-        self.configurar_pestana_tareas()
-        
+        self.cargar_datos_tareas()
+
 if __name__ == "__main__":
     app = AppAgenda()
     app.mainloop()
