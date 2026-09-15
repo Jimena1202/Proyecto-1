@@ -965,9 +965,18 @@ class AppAgenda(ctk.CTk):
         ctk.CTkLabel(self.tab_tareas, text="Fecha límite").pack(anchor="w", padx=10, pady=(8, 2))
         self.entry_tar_fecha = ctk.CTkEntry(self.tab_tareas, placeholder_text="YYYY-MM-DD")
         self.entry_tar_fecha.pack(padx=10, pady=4, fill="x")
+
+        ctk.CTkLabel(self.tab_tareas, text="Estado").pack(anchor="w", padx=10, pady=(8, 2))
+        self.combo_tar_estado = ctk.CTkComboBox(self.tab_tareas, values=["Pendiente", "En progreso", "Completada", "Cancelada"], state="readonly")
+        self.combo_tar_estado.set("Pendiente")
+        self.combo_tar_estado.pack(padx=10, pady=4, fill="x")
         
         ctk.CTkButton(self.tab_tareas, text="Crear", command=self.agregar_tarea).pack(pady=5)
         ctk.CTkButton(self.tab_tareas, text="Limpiar", command=self.limpiar_form_tarea, fg_color="gray").pack(pady=5)
+        ctk.CTkButton(self.tab_tareas, text="Actualizar", command=self.actualizar_tarea).pack(pady=5)
+        ctk.CTkButton(self.tab_tareas, text="Eliminar", command=self.eliminar_tarea, fg_color="#b33939", hover_color="#8f2d2d").pack(pady=5)
+        ctk.CTkButton(self.tab_tareas, text="Ver tareas vencidas", command=self.ver_tareas_vencidas).pack(pady=5)
+        ctk.CTkButton(self.tab_tareas, text="Ver carga de trabajo", command=self.ver_carga_trabajo).pack(pady=5)
 
     def agregar_tarea(self):
         titulo = self.entry_tar_titulo.get().strip()
@@ -1067,6 +1076,54 @@ class AppAgenda(ctk.CTk):
             messagebox.showinfo("Éxito", "Tarea actualizada correctamente.")
         except Exception as e:
             messagebox.showerror("Error de base de datos", str(e))
+
+    def eliminar_tarea(self):
+        sel = self.tree_tareas.selection()
+        if not sel:
+            return messagebox.showwarning("Sin selección", "Selecciona una tarea.")
+        tid = self.tree_tareas.item(sel[0])["values"][0]
+        if not messagebox.askyesno("Confirmar", "¿Eliminar la tarea seleccionada?"):
+            return
+        try:
+            self.ejecutar_consulta(
+                "DELETE FROM prototipo.tareas WHERE id_tarea=%s",
+                (tid,)
+            )
+            self.limpiar_form_tarea()
+            self.actualizar_todas_las_tablas()
+            messagebox.showinfo("Éxito", "Tarea eliminada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error de base de datos", str(e))
+
+    def ver_tareas_vencidas(self):
+        try:
+            rows = self.ejecutar_consulta(
+                "SELECT tarea, evento, responsable, fecha_limite, dias_vencida FROM prototipo.vw_tareas_vencidas",
+                fetch=True
+            )
+        except Exception as e:
+            return messagebox.showerror("Error de base de datos", str(e))
+        texto = "Tareas vencidas:\n\n"
+        for r in rows:
+            texto += f"{r[0]} ({r[1]}) - {r[2]} - Vencida hace {r[4]} días\n"
+        if not rows:
+            texto = "No hay tareas vencidas."
+        messagebox.showinfo("Tareas vencidas", texto)
+
+    def ver_carga_trabajo(self):
+        try:
+            rows = self.ejecutar_consulta(
+                "SELECT usuario, total_pendientes, vencidas FROM prototipo.vw_carga_trabajo",
+                fetch=True
+            )
+        except Exception as e:
+            return messagebox.showerror("Error de base de datos", str(e))
+        texto = "Carga de trabajo por usuario:\n\n"
+        for r in rows:
+            texto += f"{r[0]}: {r[1]} pendientes, {r[2]} vencidas\n"
+        if not rows:
+            texto = "No hay usuarios registrados."
+        messagebox.showinfo("Carga de trabajo", texto)
     
 
     # -------------------- REFRESCO GENERAL --------------------
