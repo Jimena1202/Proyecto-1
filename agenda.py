@@ -35,6 +35,7 @@ class AppAgenda(ctk.CTk):
         self.categorias_padre_combo = {}
 
         self.ubicaciones_combo = {}
+        self.eventos_combo = {}
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -172,6 +173,7 @@ class AppAgenda(ctk.CTk):
         self.tab_eventos = self.tabview.add("Eventos")
         self.tab_ubicaciones = self.tabview.add("Ubicaciones")
         self.tab_disponibilidad = self.tabview.add("Disponibilidad")
+        self.tab_tareas = self.tabview.add("Tareas")
 
         self.configurar_pestana_usuarios()
         self.configurar_pestana_categorias()
@@ -928,6 +930,47 @@ class AppAgenda(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Error de base de datos", str(e))
   
+# -------------------- TAREAS --------------------
+
+    def configurar_pestana_tareas(self):
+        self.crear_encabezado(self.tab_tareas, "Tareas", "Gestión de tareas por evento.")
+        
+        self.tree_tareas = self.crear_treeview(
+            self.tab_tareas, 
+            ("ID", "Evento", "Título", "Prioridad", "Responsable", "Estado", "Fecha límite"),
+            (50, 160, 180, 90, 150, 100, 110)
+        )
+        
+        self.entry_tar_titulo = ctk.CTkEntry(self.tab_tareas, placeholder_text="Título de la tarea")
+        self.entry_tar_titulo.pack(padx=10, pady=4, fill="x")
+
+        ctk.CTkLabel(self.tab_tareas, text="Evento").pack(anchor="w", padx=10, pady=(8, 2))
+        self.combo_tar_evento = ctk.CTkComboBox(self.tab_tareas, values=["Seleccione un evento"], state="readonly")
+        self.combo_tar_evento.set("Seleccione un evento")
+        self.combo_tar_evento.pack(padx=10, pady=4, fill="x")
+        
+        ctk.CTkLabel(self.tab_tareas, text="Responsable").pack(anchor="w", padx=10, pady=(8, 2))
+        self.combo_tar_responsable = ctk.CTkComboBox(self.tab_tareas, values=["Seleccione un usuario"], state="readonly")
+        self.combo_tar_responsable.set("Seleccione un usuario")
+        self.combo_tar_responsable.pack(padx=10, pady=4, fill="x")
+        
+        ctk.CTkLabel(self.tab_tareas, text="Prioridad").pack(anchor="w", padx=10, pady=(8, 2))
+        self.combo_tar_prioridad = ctk.CTkComboBox(self.tab_tareas, values=["Baja", "Media", "Alta"], state="readonly")
+        self.combo_tar_prioridad.set("Media")
+        self.combo_tar_prioridad.pack(padx=10, pady=4, fill="x")
+        
+        ctk.CTkLabel(self.tab_tareas, text="Fecha límite").pack(anchor="w", padx=10, pady=(8, 2))
+        self.entry_tar_fecha = ctk.CTkEntry(self.tab_tareas, placeholder_text="YYYY-MM-DD")
+        self.entry_tar_fecha.pack(padx=10, pady=4, fill="x")
+        
+        ctk.CTkButton(self.tab_tareas, text="Crear", command=self.agregar_tarea).pack(pady=5)
+
+    def agregar_tarea(self):
+        titulo = self.entry_tar_titulo.get().strip()
+        if not titulo:
+            return messagebox.showwarning("Faltan datos", "Escribe un título.")
+        messagebox.showinfo("Prueba", f"Título recibido: {titulo}")
+
 
     # -------------------- REFRESCO GENERAL --------------------
 
@@ -938,7 +981,8 @@ class AppAgenda(ctk.CTk):
 
         self.cargar_datos_ubicaciones()
         self.cargar_datos_disponibilidad()
-
+        self.configurar_pestana_tareas()
+        
 if __name__ == "__main__":
     app = AppAgenda()
     app.mainloop()
