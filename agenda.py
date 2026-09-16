@@ -448,6 +448,7 @@ class AppAgenda(ctk.CTk):
             (70, 170, 150, 220, 150, 150)
         )
         self.tree_eventos.bind("<<TreeviewSelect>>", self.cargar_evento_seleccionado)
+        self.tree_eventos.bind("<<TreeviewSelect>>", self.cargar_ubicacion_evento, add="+")
 
         ctk.CTkLabel(form, text="Formulario de evento", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 12))
 
@@ -528,6 +529,31 @@ class AppAgenda(ctk.CTk):
         except ValueError:
             pass
 
+    def cargar_ubicacion_evento(self, _=None):
+        """Carga la ubicación del evento seleccionado en el combo correspondiente."""
+        sel = self.tree_eventos.selection()
+        if not sel:
+            return
+        vals = self.tree_eventos.item(sel[0])["values"]
+        eid = vals[0] 
+
+        try:
+            resultado = self.ejecutar_consulta(
+                "SELECT id_ubicacion FROM eventos WHERE id_evento=%s",
+                (eid,), fetch=True
+            )
+            ubi_id = resultado[0][0] if resultado and resultado[0][0] else None
+
+            if ubi_id is not None:
+                for etiqueta, uid in self.ubicaciones_combo.items():
+                    if uid == ubi_id:
+                        self.combo_ev_ubicacion.set(etiqueta)
+                        return
+            self.combo_ev_ubicacion.set("Sin ubicación")
+        except Exception as e:
+            print("Error cargando ubicación del evento:", e)
+            self.combo_ev_ubicacion.set("Sin ubicación")
+
     def limpiar_form_evento(self):
         self.tree_eventos.selection_remove(self.tree_eventos.selection())
         self.entry_ev_titulo.delete(0, tk.END)
@@ -590,11 +616,49 @@ class AppAgenda(ctk.CTk):
         except Exception as e:
             messagebox.showerror("No se pudo eliminar", str(e))
 
+    def buscar_usuarios_disponibles(self):
+        from tkinter import simpledialog
+        fecha = simpledialog.askstring("Fecha", "Ingrese fecha (YYYY-MM-DD):")
+        if not fecha: return
+        inicio = simpledialog.askstring("Hora inicio", "HH:MM:")
+        fin = simpledialog.askstring("Hora fin", "HH:MM:")
+        if not inicio or not fin: return
+        try:
+            rows = self.ejecutar_consulta("""
+                SELECT u.id_usuario, u.nombre, u.apellido
+                FROM usuarios u
+                WHERE u.activo = TRUE
+                AND NOT EXISTS (
+                    SELECT 1 FROM prototipo.vw_ocupaciones_usuarios o
+                    WHERE o.id_usuario = u.id_usuario
+                    AND o.fecha = %s
+                    AND o.hora_inicio < %s AND o.hora_fin > %s
+                )
+                AND EXISTS (
+                    SELECT 1 FROM prototipo.disponibilidades d
+                    JOIN prototipo.tipos_disponibilidad td ON td.id_tipo = d.id_tipo
+                    WHERE d.id_usuario = u.id_usuario
+                    AND d.fecha = %s
+                    AND d.hora_inicio <= %s AND d.hora_fin >= %s
+                    AND td.nombre = 'Disponible'
+                )
+            """, (fecha, fin, inicio, fecha, inicio, fin), fetch=True)
+            if not rows:
+                messagebox.showinfo("Sin resultados", "No hay usuarios disponibles en ese rango.")
+            else:
+                texto = "Usuarios disponibles:\n\n"
+                for r in rows:
+                    texto += f"{r[1]} {r[2]} — #{r[0]}\n"
+                messagebox.showinfo("Disponibles", texto)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+
     def cargar_datos_eventos(self):
         try:
             rows = self.ejecutar_consulta("""
                 SELECT e.id_evento, u.id_usuario, u.nombre, u.apellido,
-                       c.id_categoria, c.nombre, e.titulo, e.fecha_inicio, e.fecha_fin
+                       c.id_categoria, c.nombre, e.titulo, e.fecha_inicio, e.fecha_fin, e.id_ubicacion
                 FROM eventos e
                 JOIN usuarios u ON u.id_usuario = e.id_usuario_propietario
                 JOIN categorias c ON c.id_categoria = e.id_categoria
@@ -816,6 +880,8 @@ class AppAgenda(ctk.CTk):
         self.combo_disp_tipo.set("Disponible")
         self.combo_disp_tipo.pack(fill="x", padx=10, pady=4)
 
+        ctk.CTkButton(form, text=" Buscar usuarios disponibles", command=self.buscar_usuarios_disponibles).pack(fill="x", padx=10, pady=10)
+
         ctk.CTkButton(form, text="+ Crear disponibilidad", command=self.agregar_disponibilidad).pack(fill="x", padx=10, pady=(16, 5))
         ctk.CTkButton(form, text="Nuevo / Limpiar", command=self.limpiar_form_disponibilidad, fg_color="gray").pack(fill="x", padx=10, pady=5)
         ctk.CTkButton(form, text="+ Actualizar seleccionada", command=self.actualizar_disponibilidad).pack(fill="x", padx=10, pady=5)
@@ -1026,6 +1092,7 @@ class AppAgenda(ctk.CTk):
                 JOIN usuarios u ON u.id_usuario = t.id_usuario_responsable
                 ORDER BY t.fecha_limite ASC
             """, fetch=True)
+            
             for item in self.tree_tareas.get_children():
                 self.tree_tareas.delete(item)
             for row in rows:
